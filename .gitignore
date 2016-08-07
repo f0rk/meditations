@@ -1,0 +1,4 @@
+virtualenv
+build
+*.pyc
+*.egg-info

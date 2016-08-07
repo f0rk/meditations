@@ -1,0 +1,41 @@
+{
+  "swagger" : "2.0",
+  "info" : {
+    "version" : "2016-08-06T16:11:04Z",
+    "title" : "meditations"
+  },
+  "host" : "a1b2c3d4.execute-api.us-east-1.amazonaws.com",
+  "basePath" : "/",
+  "schemes" : [ "https" ],
+  "paths" : {
+    "/" : {
+      "post" : {
+        "produces" : [ "application/json" ],
+        "responses" : {
+          "200" : {
+            "description" : "200 response",
+            "schema" : {
+              "$ref" : "#/definitions/Empty"
+            }
+          }
+        },
+        "x-amazon-apigateway-integration" : {
+          "responses" : {
+            "default" : {
+              "statusCode" : "200"
+            }
+          },
+          "uri" : "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:1111111111111:function:meditations_meditate/invocations",
+          "passthroughBehavior" : "when_no_match",
+          "httpMethod" : "POST",
+          "type" : "aws"
+        }
+      }
+    }
+  },
+  "definitions" : {
+    "Empty" : {
+      "type" : "object"
+    }
+  }
+}
