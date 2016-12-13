@@ -158,6 +158,25 @@ apigateway_client.put_rest_api(
     body=json.dumps(swagger),
 )
 
+# since I can't figure out how to require an API key from the swagger
+# definition, we'll do it manually
+meditations_resources = apigateway_client.get_resources(restApiId=api["id"])
+
+main_resource = [res for res in meditations_resources["items"] if res["path"] == "/"][0]
+
+apigateway_client.update_method(
+    restApiId=api["id"],
+    resourceId=main_resource["id"],
+    httpMethod="POST",
+    patchOperations=[
+        {
+            "op": "replace",
+            "path": "/apiKeyRequired",
+            "value": "true",
+        }
+    ]
+)
+
 # deploy the api
 apigateway_client.create_deployment(
     restApiId=api["id"],
@@ -271,5 +290,78 @@ apigateway_billing_alarm = cloudwatch_client.put_metric_alarm(
         billing_topic["TopicArn"],
     ],
 )
+
+# api key
+meditations_api_keys = apigateway_client.get_api_keys(
+    nameQuery="meditations",
+    includeValues=True,
+)
+
+meditations_api_key = [ak for ak in meditations_api_keys["items"] if ak["name"] == "meditations"]
+
+if not meditations_api_key:
+
+    meditations_api_key = apigateway_client.create_api_key(
+        name="meditations",
+        description="ohm",
+        enabled=True,
+        generateDistinctId=True,
+    )
+
+else:
+
+    meditations_api_key = meditations_api_key[0]
+
+print(u"api key: {}".format(meditations_api_key["value"]))
+
+# setup usage plan for meditations
+usage_plans = apigateway_client.get_usage_plans()
+
+meditations_usage_plan = [up for up in usage_plans["items"] if up["name"] == "meditations"]
+
+if not meditations_usage_plan:
+
+    meditations_usage_plan = apigateway_client.create_usage_plan(
+        name="meditations",
+        description="ohm",
+        apiStages=[
+            {
+                "apiId": api["id"],
+                "stage": "prod",
+            },
+        ],
+        throttle={
+            "burstLimit": 250,
+            "rateLimit": 100,
+        },
+        quota={
+            "limit": 10000,
+            "period": "DAY",
+        }
+    )
+
+else:
+
+    meditations_usage_plan = meditations_usage_plan[0]
+
+# and create a usage plan key if one does not exist
+usage_plan_keys = apigateway_client.get_usage_plan_keys(
+    usagePlanId=meditations_usage_plan["id"],
+    nameQuery="meditations",
+)
+
+meditations_usage_plan_key = [upk for upk in usage_plan_keys["items"]]
+
+if not meditations_usage_plan_key:
+
+    meditations_usage_plan_key = apigateway_client.create_usage_plan_key(
+        usagePlanId=meditations_usage_plan["id"],
+        keyId=meditations_api_key["id"],
+        keyType="API_KEY",
+    )
+
+else:
+
+    meditations_usage_plan_key = meditations_usage_plan_key[0]
 
 print("api deployed to https://{}/prod/".format(swagger["host"]))
